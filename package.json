@@ -1,0 +1,28 @@
+{
+  "name": "mongo-excel-comparison",
+  "version": "1.0.0",
+  "description": "Utility to compare MongoDB data with Excel file and generate reports for missing, updated, and duplicate records.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "exceljs": "^4.3.0",
+    "mongoose": "^6.0.12",
+    "fs-extra": "^10.0.0",
+    "path": "^0.12.7"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  },
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "author": "Your Name",
+  "license": "MIT",
+  "dependencies": {
+    "exceljs": "^4.3.0",
+    "mongoose": "^6.0.12",
+    "fs-extra": "^10.0.0"
+  }
+}

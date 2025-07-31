@@ -1,0 +1,37 @@
+{
+  "mongoDBConfig": {
+    "uri": "mongodb://localhost:27017/cat"
+  },
+  "excelConfig": {
+    "excelFilePath": "./DataSheets/20601-814 Master HU DB Rev. AM.xlsx",
+    "sheetName": "All Scopes Merged",
+    "collectionData": [
+      {
+        "collectionName": "hulu.scope",
+        "collectionExtractConfig": [
+          {
+            "excelColumn": "Endoscope Manufacturer",
+            "mongoField": "ManufacturerName"
+          },
+          {
+            "excelColumn": "Endoscope Type",
+            "mongoField": "ScopeType"
+          },
+          {
+            "excelColumn": "Scope Model",
+            "mongoField": "ScopeModel"
+          },
+          {
+            "excelColumn": "Strict Scope Family ID",
+            "mongoField": "ScopeFamilyId"
+          },
+          {
+            "excelColumn": "Number of Scopes per Basin",
+            "mongoField": "ScopePerBasin",
+            "defaultValue": 0
+          }
+        ]
+      }
+    ]
+  }
+}
