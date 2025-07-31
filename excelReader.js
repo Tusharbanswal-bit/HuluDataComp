@@ -1,9 +1,10 @@
 // excelReader.js
-const ExcelJS = require('exceljs');
-const logger = require('./logger');
-const fs = require('fs');
-const path = require('path');
-const config = require('./config.json');  // Directly read from config.json
+import ExcelJS from 'exceljs';
+import logger from './logger.js';
+import fse from 'fs-extra';
+import path from 'path';
+import config from './config.js';  // Directly read from config.json
+
 const HEADER_ROW = 5; // Assuming the first row contains headers
 
 // Function to read the Excel file and extract specified columns for each collection
@@ -91,24 +92,22 @@ const readExcelFile = async (filePath) => {
     }
 
     // Create the extracted folder if it doesn't exist
-    const extractedFolder = path.join(__dirname, 'extracted');
-    if (!fs.existsSync(extractedFolder)) {
-      fs.mkdirSync(extractedFolder);
-    }
+    const extractedFolder = path.join(process.cwd(), 'Extracted');
+    await fse.ensureDir(extractedFolder);
 
     // Append the current timestamp to the filename
     const timestamp = new Date().toISOString().replace(/[-:.]/g, ''); // Remove special characters for filename
     const outputFilePath = path.join(extractedFolder, `extractedData_${timestamp}.json`);
 
     // Save extracted data to the file
-    fs.writeFileSync(outputFilePath, JSON.stringify(extractedData, null, 2));
+    fse.outputFile(outputFilePath, JSON.stringify(extractedData, null, 2));
     logger.info(`Excel data extracted successfully and saved to ${outputFilePath}.`);
+    return { success: true, data: extractedData };
 
-  } catch (error) {
-    logger.error(`Error reading Excel file: ${error.message}`);
+  } catch (err) {
+    logger.error({ err },`Error reading Excel file: ${err.message}`);
+    return { success: false, error: err.message };
   }
-
-  return extractedData;
 };
 
-module.exports = readExcelFile;
+export default readExcelFile;

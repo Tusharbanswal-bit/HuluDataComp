@@ -1,54 +1,53 @@
 // db.js
-const mongoose = require('mongoose');
-const logger = require('./logger');
-const { mongoDBConfig } = require('./config.json');  // MongoDB connection details
+import mongoose from 'mongoose';
+import logger from './logger.js';  // Import logger for logging
+import config from './config.js';  // Use require for JSON import
+const mongoDBConfig = config.mongoDBConfig;
 
 // Function to connect to MongoDB
 const connectDB = async () => {
   try {
     await mongoose.connect(mongoDBConfig.uri, { useNewUrlParser: true, useUnifiedTopology: true });
     logger.info('MongoDB connected successfully');
-  } catch (error) {
-    logger.error(`Error connecting to MongoDB: ${error.message}`);
+  } catch (err) {
+    logger.error({ err }, `Error connecting to MongoDB`);
     process.exit(1);  // Exit if connection fails
   }
 };
 
-// Function to get the schema of the original collection
-const getCollectionSchema = async (collectionName) => {
-  try {
-    const collection = mongoose.connection.db.collection(collectionName);
-    // Get the schema of the original collection (or use predefined schema if needed)
-    const schema = await collection.findOne();
-    return schema;
-  } catch (error) {
-    logger.error(`Error fetching schema for collection ${collectionName}: ${error.message}`);
-    return null;
-  }
-};
+async function init() {
+  await connectDB();
+}
 
-// Function to create a Mongoose model for the temporary collection using the original collection's schema
-const createTempModel = (collectionName, originalSchema) => {
-  // We can use the same schema for the temporary collection, or you could modify it as needed
-  const tempCollectionName = `${collectionName}_temp`;  // Temporary collection name
-  const tempSchema = new mongoose.Schema(originalSchema);
-  const tempModel = mongoose.model(tempCollectionName, tempSchema);
-
-  return tempModel;
-};
-
-// Function to insert data into the temporary collection
 const insertIntoTempCollection = async (collectionName, data) => {
+  const tempCollectionName = `${collectionName}.temp.camp`;
   try {
-    const schema = await getCollectionSchema(collectionName);
-    if (schema) {
-      const tempModel = createTempModel(collectionName, schema);
-      const result = await tempModel.insertMany(data);
-      logger.info(`Inserted ${result.insertedCount} documents into temporary collection ${collectionName}_temp.`);
-    }
-  } catch (error) {
-    logger.error(`Error inserting data into temp collection: ${error.message}`);
+    // Create a dynamic schema (allowing any field, no strict schema)
+    const schema = new mongoose.Schema({}, { strict: false });
+    const tempModel = mongoose.model(tempCollectionName, schema, tempCollectionName);
+
+    // Truncate the collection by deleting all existing documents
+    await tempModel.deleteMany({});
+
+    // Prepare bulk operations
+    const bulkOps = data.map(doc => ({
+      insertOne: {
+        document: doc
+      }
+    }));
+
+    // Perform bulk insert
+    const result = await tempModel.bulkWrite(bulkOps);
+    logger.info(`Inserted ${result.insertedCount} documents into temporary collection "${tempCollectionName}".`);
+  } catch (err) {
+    logger.error({ err }, `Error inserting data into temp collection ${tempCollectionName}`);
   }
 };
 
-module.exports = { connectDB, insertIntoTempCollection };
+
+export default {
+  init,
+  insertIntoTempCollection,
+  connectDB
+};
+
