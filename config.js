@@ -100,89 +100,6 @@ export default {
       compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamilyId", "ScopePerBasin", "HookupName", "MachineFamilyID"], // Fields to create composite key for deduplication
       mapping: [
         {
-          filename: "20601-814 Master HU DB Rev. AM.xlsx", ///RapidAER Hookup
-          sheetName: "All Scopes Merged",
-          headerIndex: 5,
-          excludeRecord: [
-            { columnName: "HookupName", values: ["", 0, null, undefined] }
-          ],
-          recordHeader: "RapidAER",
-          columnConfig: [
-            {
-              columnName: "MachineFamilyID",
-              defaultValue: 3
-            },
-            {
-              columnName: "ManufacturerName",
-              headerName: "Endoscope Manufacturer"
-            },
-            {
-              columnName: "ScopeType",
-              headerName: "Endoscope Type"
-            },
-            {
-              columnName: "ScopeModel",
-              headerName: "Scope Model"
-            },
-            {
-              columnName: "ScopeFamilyId",
-              headerName: "Strict Scope Family ID"
-            },
-            {
-              columnName: "ScopePerBasin",
-              headerName: "Number of Scopes per Basin",
-              defaultValue: 0
-            },
-            {
-              columnName: "HookupName",
-              headerName: "Hookup",
-              columnIndex: 11
-            },
-
-          ]
-        },
-        {
-          filename: "20601-814 Master HU DB Rev. AM.xlsx",
-          sheetName: "All Scopes Merged",
-          headerIndex: 5,
-          recordHeader: "ISA",
-          excludeRecord: [
-            { columnName: "HookupName", values: ["", 0, null, undefined] }
-          ],
-          columnConfig: [
-            {
-              columnName: "MachineFamilyID", //ISA Hookup
-              defaultValue: 5
-            },
-            {
-              columnName: "ManufacturerName",
-              headerName: "Endoscope Manufacturer"
-            },
-            {
-              columnName: "ScopeType",
-              headerName: "Endoscope Type"
-            },
-            {
-              columnName: "ScopeModel",
-              headerName: "Scope Model"
-            },
-            {
-              columnName: "ScopeFamilyId",
-              headerName: "Strict Scope Family ID"
-            },
-            {
-              columnName: "ScopePerBasin",
-              headerName: "Number of Scopes per Basin",
-              defaultValue: 0
-            },
-            {
-              columnName: "HookupName",
-              headerName: "Hookup",
-              columnIndex: 16
-            }
-          ]
-        },
-        {
           filename: "20601-814 Master HU DB Rev. AM.xlsx",
           sheetName: "All Scopes Merged",
           headerIndex: 5,
@@ -215,8 +132,7 @@ export default {
             },
             {
               columnName: "HookupName",
-              headerName: "Hookup",
-              columnIndex: 17,
+              headerName: "Hookup, Handle version",
               defaultValue: 0
             }
           ]
