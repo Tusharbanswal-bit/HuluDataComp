@@ -1,113 +1,141 @@
-// excelReader.js
 import ExcelJS from 'exceljs';
 import logger from './logger.js';
 import fse from 'fs-extra';
 import path from 'path';
-import config from './config.js';  // Directly read from config.json
 
-const HEADER_ROW = 5; // Assuming the first row contains headers
+const createCompositeKey = (record, compositeKeys) => {
+  return compositeKeys.map(key => record[key] || '').join('|').toLowerCase();
+};
 
-// Function to read the Excel file and extract specified columns for each collection
-const readExcelFile = async (filePath) => {
-  const workbook = new ExcelJS.Workbook();
-  let extractedData = [];
+const removeDuplicates = (data, compositeKeys) => {
+  if (!compositeKeys || compositeKeys.length === 0) {
+    return { uniqueData: data, duplicates: [] };
+  }
 
-  try {
-    // Read the Excel file
-    await workbook.xlsx.readFile(filePath);
+  const uniqueKeys = new Set();
+  const uniqueData = [];
+  const duplicates = [];
 
-    // Get the sheet by its name from the config
-    const sheetName = config.excelConfig.sheetName || 'Sheet1'; // Default to 'Sheet1' if not provided
-    const sheet = workbook.getWorksheet(sheetName); // Retrieve the sheet by name
-
-    // Check if the sheet exists
-    if (!sheet) {
-      throw new Error(`The specified sheet "${sheetName}" does not exist in the Excel file.`);
+  for (const record of data) {
+    const compositeKey = createCompositeKey(record, compositeKeys);
+    
+    if (!uniqueKeys.has(compositeKey)) {
+      uniqueKeys.add(compositeKey);
+      uniqueData.push(record);
+    } else {
+      duplicates.push({
+        record: record,
+        compositeKey: compositeKey
+      });
+      logger.info(`Duplicate record found and removed: ${compositeKey}`);
     }
+  }
 
-    // Get headers from the row defined by HEADER_ROW (5 in this case)
-    const headers = sheet.getRow(HEADER_ROW).values;
-    const columnIndices = new Map();
+  logger.info(`Removed ${duplicates.length} duplicate records. Final count: ${uniqueData.length}`);
+  return { uniqueData, duplicates };
+};
 
-    // Iterate through each collection in config.excelConfig.collectionData
-    for (const collectionConfig of config.excelConfig.collectionData) {
-      const { collectionName, collectionExtractConfig } = collectionConfig;
-      const collectionData = [];
+const parseFile = async (collectionConfig, dataSheetsDirectory) => {
+  const { collectionName, mapping, compositeUniqueKeys } = collectionConfig;
+  let allExtractedData = [];
+  try {
+    for (const fileMapping of mapping) {
+      const { filename, sheetName, headerIndex = 1, columnConfig } = fileMapping;
+      const filePath = path.join(process.cwd(), dataSheetsDirectory, filename);
 
-      // Create a map of the columns to extract for this collection, based on collectionExtractConfig
-      for (const column of collectionExtractConfig) {
-        const columnHeader = column.excelColumn; // The header name to look for
+      if (!await fse.pathExists(filePath)) {
+        logger.error(`File not found: ${filePath}`);
+        continue;
+      }
+
+      logger.info(`Processing file: ${filename}, sheet: ${sheetName}`);
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
+      const sheet = workbook.getWorksheet(sheetName);
+
+      if (!sheet) {
+        logger.error(`The specified sheet "${sheetName}" does not exist in the Excel file at ${filePath}.`);
+        continue;
+      }
+
+      const headers = sheet.getRow(headerIndex).values;
+      const columnIndices = new Map();
+
+      for (const column of columnConfig) {
+        const columnHeader = column.columnName;
         const columnIndex = headers.findIndex(header => {
-          const headerName = typeof header === "string" && header.trim().toLowerCase();
+          const headerName = typeof header === "string" ? header.trim().toLowerCase() : '';
           return headerName === columnHeader.toLowerCase();
         });
 
-        // If column is not found in the sheet, return error
         if (columnIndex === -1) {
-          logger.info(`Invalid column: ${columnHeader}`);
-          return { success: false, info: `InvalidExcelFormat`, data: { columnName: columnHeader } };
+          logger.info(`Invalid column: ${columnHeader} in sheet "${sheetName}"`);
+          continue;
         }
 
-        // Add column index to map
         columnIndices.set(columnHeader, columnIndex);
       }
 
-      // Extract the data for this collection
       sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
-        if (rowNumber <= HEADER_ROW) return;  // Skip header row
+        if (rowNumber <= headerIndex) return;
 
         const rowData = {};
-
-        // Extract the data based on the collectionExtractConfig
-        for (const column of collectionExtractConfig) {
-          const columnHeader = column.excelColumn;
+        for (const column of columnConfig) {
+          const columnHeader = column.columnName;
           const columnIndex = columnIndices.get(columnHeader);
+          
+          if (columnIndex === undefined) continue;
+          
           let columnValue = row.getCell(columnIndex).value;
-
-          // Convert column value to string if necessary
           columnValue = columnValue ? columnValue.toString().trim() : '';
 
-          // Use default value if the column is empty and a default is provided
           if (!columnValue && column.defaultValue !== undefined) {
             columnValue = column.defaultValue;
           }
 
-          // Map the value to MongoDB field as per mapping
-          rowData[column.mongoField] = columnValue;
+          rowData[column.headerName] = columnValue;
         }
-
-        // Add the row data to the collectionData array
-        collectionData.push(rowData);
+        allExtractedData.push(rowData);
       });
 
-      // Add the collection data to the main extracted data
-      extractedData.push({
-        collectionName,
-        data: collectionData,
-        recordCount: collectionData.length // Add the count of records for the collection
-      });
-
-      // Log the extracted data for this collection
-      logger.info(`Extracted ${collectionData.length} records for collection "${collectionName}".`);
+      logger.info(`Extracted ${allExtractedData.length} total records so far from ${filename}`);
     }
 
-    // Create the extracted folder if it doesn't exist
+    // Remove duplicates based on composite unique keys
+    const deduplicationResult = removeDuplicates(allExtractedData, compositeUniqueKeys);
+    const uniqueData = deduplicationResult.uniqueData;
+    const duplicates = deduplicationResult.duplicates;
+
+    // Save consolidated and deduplicated data to JSON file
     const extractedFolder = path.join(process.cwd(), 'Extracted');
     await fse.ensureDir(extractedFolder);
 
     // Append the current timestamp to the filename
     const timestamp = new Date().toISOString().replace(/[-:.]/g, ''); // Remove special characters for filename
-    const outputFilePath = path.join(extractedFolder, `extractedData_${timestamp}.json`);
+    const outputFilePath = path.join(extractedFolder, `extractedData_${collectionName.replace(/\./g, '_')}_${timestamp}.json`);
 
     // Save extracted data to the file
-    fse.outputFile(outputFilePath, JSON.stringify(extractedData, null, 2));
-    logger.info(`Excel data extracted successfully and saved to ${outputFilePath}.`);
-    return { success: true, data: extractedData };
+    const fileData = {
+      collectionName: collectionName,
+      collectionData: uniqueData,
+      recordCount: uniqueData.length,
+      duplicateRecords: duplicates,
+      duplicateCount: duplicates.length,
+      totalRecordsProcessed: allExtractedData.length,
+      compositeUniqueKeys: compositeUniqueKeys,
+      processedFiles: mapping.map(m => m.filename),
+      timestamp: new Date().toISOString()
+    };
+
+    await fse.outputFile(outputFilePath, JSON.stringify(fileData, null, 2));
+    logger.info(`Collection data extracted successfully and saved to ${outputFilePath} with ${uniqueData.length} unique records and ${duplicates.length} duplicate records.`);
+
+    return { success: true, data: uniqueData, duplicates: duplicates, filePath: outputFilePath };
 
   } catch (err) {
-    logger.error({ err },`Error reading Excel file: ${err.message}`);
+    logger.error({ err }, `Error processing collection ${collectionName}: ${err.message}`);
     return { success: false, error: err.message };
   }
 };
 
-export default readExcelFile;
+export { parseFile };
