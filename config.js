@@ -17,24 +17,24 @@ export default {
           headerIndex: 5,
           columnConfig: [
             {
-              columnName: "Endoscope Manufacturer",
-              headerName: "ManufacturerName"
+              columnName: "ManufacturerName",
+              headerName: "Endoscope Manufacturer"
             },
             {
-              columnName: "Endoscope Type",
-              headerName: "ScopeType"
+              columnName: "ScopeType",
+              headerName: "Endoscope Type"
             },
             {
-              columnName: "Scope Model",
-              headerName: "ScopeModel"
+              columnName: "ScopeModel",
+              headerName: "Scope Model"
             },
             {
-              columnName: "Strict Scope Family ID",
-              headerName: "ScopeFamilyId"
+              columnName: "ScopeFamilyId",
+              headerName: "Strict Scope Family ID"
             },
             {
-              columnName: "Number of Scopes per Basin",
-              headerName: "ScopePerBasin",
+              columnName: "ScopePerBasin",
+              headerName: "Number of Scopes per Basin",
               defaultValue: 0
             }
           ]
@@ -44,16 +44,16 @@ export default {
           sheetName: "ENSPIRE",
           columnConfig: [
             {
-              columnName: "MODELNUMBER",
-              headerName: "ScopeModel"
+              columnName: "ScopeModel",
+              headerName: "MODELNUMBER"
             },
             {
-              columnName: "MANUFACTURER",
-              headerName: "ManufacturerName"
+              columnName: "ManufacturerName",
+              headerName: "MANUFACTURER"
             },
             {
-              columnName: "DEVICENAME",
-              headerName: "ScopeType"
+              columnName: "ScopeType",
+              headerName: "DEVICENAME"
             }
           ]
         },
@@ -62,16 +62,16 @@ export default {
           sheetName: "ENSPIRE3000",
           columnConfig: [
             {
-              columnName: "MODELNUMBER",
-              headerName: "ScopeModel"
+              columnName: "ScopeModel",
+              headerName: "MODELNUMBER"
             },
             {
-              columnName: "MANUFACTURER",
-              headerName: "ManufacturerName"
+              columnName: "ManufacturerName",
+              headerName: "MANUFACTURER"
             },
             {
-              columnName: "DEVICENAME",
-              headerName: "ScopeType"
+              columnName: "ScopeType",
+              headerName: "DEVICENAME"
             }
           ]
         },
@@ -80,16 +80,16 @@ export default {
           sheetName: "ENSPIRE3000_US",
           columnConfig: [
             {
-              columnName: "MODELNUMBER",
-              headerName: "ScopeModel"
+              columnName: "ScopeModel",
+              headerName: "MODELNUMBER"
             },
             {
-              columnName: "MANUFACTURER",
-              headerName: "ManufacturerName"
+              columnName: "ManufacturerName",
+              headerName: "MANUFACTURER"
             },
             {
-              columnName: "DEVICENAME",
-              headerName: "ScopeType"
+              columnName: "ScopeType",
+              headerName: "DEVICENAME"
             }
           ]
         }

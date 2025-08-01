@@ -44,7 +44,7 @@ const parseFile = async (collectionConfig, dataSheetsDirectory) => {
       const filePath = path.join(process.cwd(), dataSheetsDirectory, filename);
 
       if (!await fse.pathExists(filePath)) {
-        logger.error(`File not found: ${filePath}`);
+        logger.info(`File not found: ${filePath}`);
         continue;
       }
 
@@ -54,7 +54,7 @@ const parseFile = async (collectionConfig, dataSheetsDirectory) => {
       const sheet = workbook.getWorksheet(sheetName);
 
       if (!sheet) {
-        logger.error(`The specified sheet "${sheetName}" does not exist in the Excel file at ${filePath}.`);
+        logger.info(`The specified sheet "${sheetName}" does not exist in the Excel file at ${filePath}.`);
         continue;
       }
 
@@ -62,7 +62,7 @@ const parseFile = async (collectionConfig, dataSheetsDirectory) => {
       const columnIndices = new Map();
 
       for (const column of columnConfig) {
-        const columnHeader = column.columnName;
+        const columnHeader = column.headerName; // Excel header name
         const columnIndex = headers.findIndex(header => {
           const headerName = typeof header === "string" ? header.trim().toLowerCase() : '';
           return headerName === columnHeader.toLowerCase();
@@ -81,7 +81,7 @@ const parseFile = async (collectionConfig, dataSheetsDirectory) => {
 
         const rowData = {};
         for (const column of columnConfig) {
-          const columnHeader = column.columnName;
+          const columnHeader = column.headerName; // Excel header name
           const columnIndex = columnIndices.get(columnHeader);
           
           if (columnIndex === undefined) continue;
@@ -93,7 +93,7 @@ const parseFile = async (collectionConfig, dataSheetsDirectory) => {
             columnValue = column.defaultValue;
           }
 
-          rowData[column.headerName] = columnValue;
+          rowData[column.columnName] = columnValue; // Store using collection field name
         }
         allExtractedData.push(rowData);
       });

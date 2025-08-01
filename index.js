@@ -3,7 +3,6 @@ import logger from './logger.js';
 import config from './config.js';
 
 logger.init();
-
 const main = async () => {
   try {
     logger.info('Starting Excel data extraction process...');
@@ -15,7 +14,7 @@ const main = async () => {
       const result = await parseFile(collectionConfig, dataSheetsDirectory);
       
       if (!result.success) {
-        logger.error(`Failed to process collection ${collectionName}: ${result.error}`);
+        logger.error({ err: result.error }, `Failed to process collection ${collectionName}: ${result.error}`);
         continue; // Skip this collection and continue with the next one
       }
 
@@ -23,7 +22,6 @@ const main = async () => {
     }
     
     logger.info('Excel data extraction process completed successfully.');
-
   } catch (err) {
     logger.error({ err }, `An error occurred while processing the Excel files: ${err.message}`);
   }
