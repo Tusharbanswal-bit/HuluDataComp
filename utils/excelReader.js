@@ -4,6 +4,7 @@ import logger from './logger.js';
 import fse from 'fs-extra';
 import path from 'path';
 
+const nullValues = [null, undefined, ''];
 class ExcelReader {
 
   /**
@@ -13,9 +14,9 @@ class ExcelReader {
    * @returns {Promise<Object>} - Extracted data result
    */
   async readExcel(fileMapping, dataSheetsDirectory) {
-    const { filename, sheetName, headerIndex = 1, columnConfig } = fileMapping;
+    const { filename, sheetName, headerIndex = 1, columnConfig, excludeRecord, recordHeader } = fileMapping;
     const filePath = path.join(process.cwd(), dataSheetsDirectory, filename);
-    let extractedData = [];
+    const extractedData = [];
 
     try {
       // Check if file exists
@@ -63,8 +64,9 @@ class ExcelReader {
       sheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
         if (rowNumber <= headerIndex) return; // Skip header row
 
-        const rowData = {};
+        let rowData = {};
         for (const column of columnConfig) {
+
           if (!column.headerName && column.columnName) { //adding default value for column without headerName
             rowData[column.columnName] = column.defaultValue;
             extractedData.push(rowData);
@@ -72,7 +74,27 @@ class ExcelReader {
           }
           const columnHeader = column.headerName; // Excel header name
           const columnIndex = columnIndices.get(columnHeader);
+          let shouldExclude = false;
 
+          // Handle excludeValues as array of objects: [{ columnName, values }]
+          if (Array.isArray(excludeRecord)) {
+            for (const excludeObj of excludeRecord) {
+              if (column.columnName === excludeObj.columnName) {
+                const cellValue = row.getCell(columnIndex).value;
+                if (excludeObj.values.includes(cellValue)) {
+                  shouldExclude = true;
+                  rowData = {};
+                  break;
+                }
+              }
+            }
+
+          }
+
+          if (shouldExclude) {
+            // Skip this row entirely
+            continue;
+          }
           if (columnIndex === undefined) continue;
 
           let columnValue = row.getCell(columnIndex).value;
@@ -91,18 +113,19 @@ class ExcelReader {
         }
       });
 
-      logger.info(`Extracted ${extractedData.length} records from ${filename}`);
+      logger.info(`Extracted ${extractedData.length} records from ${filename} `);
 
       return {
         success: true,
         data: extractedData,
         filename: filename,
         sheetName: sheetName,
-        recordCount: extractedData.length
+        recordCount: extractedData.length,
+        recordHeader: recordHeader || ''
       };
 
     } catch (err) {
-      logger.error({ err }, `Error reading Excel file ${filename}: ${err.message}`);
+      logger.error({ err }, `Error reading Excel file ${filename}: ${err.message} `);
       return { success: false, error: err.message, data: [] };
     }
   }

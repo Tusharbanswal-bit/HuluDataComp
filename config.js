@@ -103,6 +103,10 @@ export default {
           filename: "20601-814 Master HU DB Rev. AM.xlsx", ///RapidAER Hookup
           sheetName: "All Scopes Merged",
           headerIndex: 5,
+          excludeRecord: [
+            { columnName: "HookupName", values: ["", 0, null, undefined] }
+          ],
+          recordHeader: "RapidAER",
           columnConfig: [
             {
               columnName: "MachineFamilyID",
@@ -132,8 +136,7 @@ export default {
             {
               columnName: "HookupName",
               headerName: "Hookup",
-              columnIndex: 11,
-              defaultValue: 0
+              columnIndex: 11
             },
 
           ]
@@ -142,6 +145,10 @@ export default {
           filename: "20601-814 Master HU DB Rev. AM.xlsx",
           sheetName: "All Scopes Merged",
           headerIndex: 5,
+          recordHeader: "ISA",
+          excludeRecord: [
+            { columnName: "HookupName", values: ["", 0, null, undefined] }
+          ],
           columnConfig: [
             {
               columnName: "MachineFamilyID", //ISA Hookup
@@ -171,8 +178,7 @@ export default {
             {
               columnName: "HookupName",
               headerName: "Hookup",
-              columnIndex: 16,
-              defaultValue: 0
+              columnIndex: 16
             }
           ]
         },
@@ -180,6 +186,7 @@ export default {
           filename: "20601-814 Master HU DB Rev. AM.xlsx",
           sheetName: "All Scopes Merged",
           headerIndex: 5,
+          recordHeader: "Adv",
           columnConfig: [
             {
               columnName: "MachineFamilyID", //ADV Hookup

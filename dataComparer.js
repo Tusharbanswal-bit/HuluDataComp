@@ -129,7 +129,8 @@ class DataComparer {
                     filename: result.filename,
                     sheetName: result.sheetName,
                     recordCount: result.recordCount,
-                    fileData: result.data
+                    fileData: result.data,
+                    recordHeader: result.recordHeader,
                 });
             }
 
