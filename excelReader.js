@@ -4,7 +4,7 @@ import fse from 'fs-extra';
 import path from 'path';
 
 const createCompositeKey = (record, compositeKeys) => {
-  return compositeKeys.map(key => record[key] || '').join('|').toLowerCase();
+  return compositeKeys.map(key => [undefined, null].includes(record[key]) ? '' : record[key]).join('|').toLowerCase();
 };
 
 const removeDuplicates = (data, compositeKeys) => {
@@ -18,7 +18,7 @@ const removeDuplicates = (data, compositeKeys) => {
 
   for (const record of data) {
     const compositeKey = createCompositeKey(record, compositeKeys);
-    
+
     if (!uniqueKeys.has(compositeKey)) {
       uniqueKeys.add(compositeKey);
       uniqueData.push(record);
@@ -63,7 +63,10 @@ const parseFile = async (collectionConfig, dataSheetsDirectory) => {
 
       for (const column of columnConfig) {
         const columnHeader = column.headerName; // Excel header name
-        const columnIndex = headers.findIndex(header => {
+        if (!column.headerName) {
+          continue;
+        }
+        const columnIndex = typeof column.columnIndex === 'number' ? column.columnIndex : headers.findIndex(header => {
           const headerName = typeof header === "string" ? header.trim().toLowerCase() : '';
           return headerName === columnHeader.toLowerCase();
         });
@@ -81,11 +84,18 @@ const parseFile = async (collectionConfig, dataSheetsDirectory) => {
 
         const rowData = {};
         for (const column of columnConfig) {
+
+          if (!column.headerName && column.columnName) { //adding default value for column without headerName
+            rowData[column.columnName] = column.defaultValue;
+            allExtractedData.push(rowData);
+            continue;
+          }
+
           const columnHeader = column.headerName; // Excel header name
           const columnIndex = columnIndices.get(columnHeader);
-          
+
           if (columnIndex === undefined) continue;
-          
+
           let columnValue = row.getCell(columnIndex).value;
           columnValue = columnValue ? columnValue.toString().trim() : '';
 

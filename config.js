@@ -9,7 +9,7 @@ export default {
   collectionConfig: [
     {
       collectionName: "hulu.scope",
-      compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamilyId", "ScopePerBasin"], // Fields to create composite key for deduplication
+      compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamilyId", "ScopePerBasin", "Hookup"], // Fields to create composite key for deduplication
       mapping: [
         {
           filename: "20601-814 Master HU DB Rev. AM.xlsx",
@@ -90,6 +90,127 @@ export default {
             {
               columnName: "ScopeType",
               headerName: "DEVICENAME"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      collectionName: "hulu.hookup",
+      compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamilyId", "ScopePerBasin", "Hookup", "MachineFamilyID"], // Fields to create composite key for deduplication
+      mapping: [
+        {
+          filename: "20601-814 Master HU DB Rev. AM.xlsx", ///RapidAER Hookup
+          sheetName: "All Scopes Merged",
+          headerIndex: 5,
+          columnConfig: [
+            {
+              columnName: "MachineFamilyID",
+              defaultValue: 3
+            },
+            {
+              columnName: "ManufacturerName",
+              headerName: "Endoscope Manufacturer"
+            },
+            {
+              columnName: "ScopeType",
+              headerName: "Endoscope Type"
+            },
+            {
+              columnName: "ScopeModel",
+              headerName: "Scope Model"
+            },
+            {
+              columnName: "ScopeFamilyId",
+              headerName: "Strict Scope Family ID"
+            },
+            {
+              columnName: "ScopePerBasin",
+              headerName: "Number of Scopes per Basin",
+              defaultValue: 0
+            },
+            {
+              columnName: "HookupName",
+              headerName: "Hookup",
+              columnIndex: 11,
+              defaultValue: 0
+            },
+
+          ]
+        },
+        {
+          filename: "20601-814 Master HU DB Rev. AM.xlsx",
+          sheetName: "All Scopes Merged",
+          headerIndex: 5,
+          columnConfig: [
+            {
+              columnName: "MachineFamilyID", //ISA Hookup
+              defaultValue: 5
+            },
+            {
+              columnName: "ManufacturerName",
+              headerName: "Endoscope Manufacturer"
+            },
+            {
+              columnName: "ScopeType",
+              headerName: "Endoscope Type"
+            },
+            {
+              columnName: "ScopeModel",
+              headerName: "Scope Model"
+            },
+            {
+              columnName: "ScopeFamilyId",
+              headerName: "Strict Scope Family ID"
+            },
+            {
+              columnName: "ScopePerBasin",
+              headerName: "Number of Scopes per Basin",
+              defaultValue: 0
+            },
+            {
+              columnName: "HookupName",
+              headerName: "Hookup",
+              columnIndex: 16,
+              defaultValue: 0
+            }
+          ]
+        },
+        {
+          filename: "20601-814 Master HU DB Rev. AM.xlsx",
+          sheetName: "All Scopes Merged",
+          headerIndex: 5,
+          columnConfig: [
+            {
+              columnName: "MachineFamilyID", //ADV Hookup
+              defaultValue: 2
+            },
+            {
+              columnName: "ManufacturerName",
+              headerName: "Endoscope Manufacturer"
+            },
+            {
+              columnName: "ScopeType",
+              headerName: "Endoscope Type"
+            },
+            {
+              columnName: "ScopeModel",
+              headerName: "Scope Model"
+            },
+            {
+              columnName: "ScopeFamilyId",
+              headerName: "Strict Scope Family ID"
+            },
+            {
+              columnName: "ScopePerBasin",
+              headerName: "Number of Scopes per Basin",
+              defaultValue: 0
+            },
+            {
+              columnName: "HookupName",
+              headerName: "Hookup",
+              columnIndex: 17,
+              defaultValue: 0
             }
           ]
         }
