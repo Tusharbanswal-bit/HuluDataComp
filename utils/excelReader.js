@@ -5,7 +5,7 @@ import fse from 'fs-extra';
 import path from 'path';
 
 class ExcelReader {
-  
+
   /**
    * Read Excel file and extract data based on the provided configuration
    * @param {Object} fileMapping - File mapping configuration
@@ -25,7 +25,7 @@ class ExcelReader {
       }
 
       logger.info(`Processing file: ${filename}, sheet: ${sheetName}`);
-      
+
       // Initialize Excel workbook
       const workbook = new ExcelJS.Workbook();
       await workbook.xlsx.readFile(filePath);
@@ -46,7 +46,7 @@ class ExcelReader {
           continue;
         }
         const columnHeader = column.headerName; // Excel header name
-        const columnIndex = headers.findIndex(header => {
+        const columnIndex = typeof column.columnIndex === 'number' ? column.columnIndex : headers.findIndex(header => {
           const headerName = typeof header === "string" ? header.trim().toLowerCase() : '';
           return headerName === columnHeader.toLowerCase();
         });
@@ -72,9 +72,9 @@ class ExcelReader {
           }
           const columnHeader = column.headerName; // Excel header name
           const columnIndex = columnIndices.get(columnHeader);
-          
+
           if (columnIndex === undefined) continue;
-          
+
           let columnValue = row.getCell(columnIndex).value;
           columnValue = columnValue ? columnValue.toString().trim() : '';
 
@@ -93,8 +93,8 @@ class ExcelReader {
 
       logger.info(`Extracted ${extractedData.length} records from ${filename}`);
 
-      return { 
-        success: true, 
+      return {
+        success: true,
         data: extractedData,
         filename: filename,
         sheetName: sheetName,
