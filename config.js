@@ -97,7 +97,7 @@ export default {
     },
     {
       collectionName: "hulu.hookup",
-      compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamilyId", "ScopePerBasin", "Hookup", "MachineFamilyID"], // Fields to create composite key for deduplication
+      compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamilyId", "ScopePerBasin", "HookupName", "MachineFamilyID"], // Fields to create composite key for deduplication
       mapping: [
         {
           filename: "20601-814 Master HU DB Rev. AM.xlsx", ///RapidAER Hookup
