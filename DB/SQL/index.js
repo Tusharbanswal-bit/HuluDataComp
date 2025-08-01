@@ -59,6 +59,23 @@ class SQLAdapter {
   }
 
   /**
+   * Fetch all records from a table
+   */
+  async fetchRecords(tableName) {
+    try {
+      // TODO: Implement SQL SELECT query for fetching all records
+      const sql = `SELECT * FROM ${tableName}`;
+      const result = await this.query(sql);
+      
+      logger.info(`Fetched ${result.data.length} records from table "${tableName}"`);
+      return { success: true, data: result.data, count: result.data.length };
+    } catch (err) {
+      logger.error({ err }, `Error fetching records from SQL table ${tableName}: ${err.message}`);
+      return { success: false, error: err.message, data: [] };
+    }
+  }
+
+  /**
    * Close SQL database connection
    */
   async close() {

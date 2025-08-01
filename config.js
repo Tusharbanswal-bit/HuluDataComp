@@ -1,6 +1,6 @@
 export default {
   dbConfig: {
-    sql: true,
+    sql: false,
     uri: "mongodb://localhost:27017/cat",
     username: "your_db_username",
     password: "your_db_password"
@@ -9,7 +9,7 @@ export default {
   collectionConfig: [
     {
       collectionName: "hulu.scope",
-      compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamilyId", "ScopePerBasin", "Hookup"], // Fields to create composite key for deduplication
+      compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamily"],
       mapping: [
         {
           filename: "20601-814 Master HU DB Rev. AM.xlsx",
@@ -29,7 +29,7 @@ export default {
               headerName: "Scope Model"
             },
             {
-              columnName: "ScopeFamilyId",
+              columnName: "ScopeFamily",
               headerName: "Strict Scope Family ID"
             },
             {
