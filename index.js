@@ -2,7 +2,6 @@ import DataComparer from './dataComparer.js';
 import logger from './utils/logger.js'; 
 import config from './config.js';
 
-logger.init();
 const main = async () => {
   try {
     logger.info('Starting Excel data extraction and comparison process...');
@@ -23,6 +22,7 @@ const main = async () => {
     }
     
     logger.info('Excel data extraction and comparison process completed successfully.');
+    process.exit(0); // Exit the process after completion
   } catch (err) {
     logger.error({ err }, `An error occurred while processing the Excel files: ${err.message}`);
   }

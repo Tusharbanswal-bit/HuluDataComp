@@ -17,7 +17,7 @@ class DataComparer {
      * @returns {string} - Composite key string
      */
     createCompositeKey(record, compositeKeys) {
-        return compositeKeys.map(key => [undefined, null].includes(record[key]) ? '' : record[key]).join('|').toLowerCase();
+        return compositeKeys.map(key => [undefined, null].includes(record[key]) ? '' : record[key]).join('|').toLowerCase().trim();
     }
 
     getDuplicateStats(data, compositeKeys) {
@@ -32,7 +32,8 @@ class DataComparer {
                 uniqueKeys.add(compositeKey);
                 uniqueData.push(record);
             } else {
-                if(duplicateSet.has(compositeKey)) {
+                // if exists in duplicateSet, increment count
+                if (duplicateSet.has(compositeKey)) {
                     const duplicateRecord = duplicates.find(d => d.compositeKey === compositeKey);
                     duplicateRecord.duplicateCount += 1;
                     continue;
@@ -43,7 +44,6 @@ class DataComparer {
                     duplicateCount: 1
                 });
                 duplicateSet.add(compositeKey);
-                logger.info(`Duplicate record found: ${compositeKey}`);
             }
         }
 
@@ -52,7 +52,7 @@ class DataComparer {
             uniqueRecords: uniqueData,
             uniqueCount: uniqueData.length,
             duplicateRecords: duplicates,
-            duplicateCount: duplicates.length
+            duplicateCount: duplicates.reduce((count, d) => count + d.duplicateCount, 0)
         };
     }
 
@@ -70,12 +70,12 @@ class DataComparer {
             return { success: false };
         }
 
-        if(processedFiles.length) {
+        if (processedFiles.length) {
             processedFiles.forEach(file => {
                 const duplicateResult = this.getDuplicateStats(file.fileData, compositeKeys);
                 delete file.fileData;
                 file.duplicateRecords = duplicateResult.duplicateRecords;
-                file.duplicateCount = duplicateResult.duplicateRecords.length;
+                file.duplicateCount = duplicateResult.duplicateCount;
             });
         }
 
@@ -89,10 +89,11 @@ class DataComparer {
                 collectionName: collectionName,
                 processedFiles: processedFiles,
                 uniqueRecords: duplicateResult.uniqueRecords,
-                uniqueCount: duplicateResult.uniqueRecords.length,
+                uniqueCount: duplicateResult.uniqueCount,
                 duplicates: duplicateResult.duplicateRecords,
-                duplicateCount: duplicateResult.duplicateRecords.length,
-                compositeKeys: compositeKeys
+                duplicateCount: duplicateResult.duplicateCount,
+                compositeKeys: compositeKeys,
+                totalRecords: duplicateResult.totalRecords
             };
             await fse.outputFile(outputFilePath, JSON.stringify(reportData, null, 2));
             logger.info(`Duplicate report generated successfully: ${outputFilePath}`);
@@ -110,7 +111,7 @@ class DataComparer {
      * @returns {Promise<Object>} - Generated report
      */
     async generateReport(collectionConfig, dataSheetsDirectory) {
-        const { collectionName, mapping, compositeUniqueKeys } = collectionConfig;
+        const { collectionName, mapping, compositeUniqueKeys, dataCompareKey } = collectionConfig;
         let allExtractedData = [];
         const processedFiles = [];
 
@@ -119,7 +120,7 @@ class DataComparer {
                 const result = await this.excelReader.readExcel(fileMapping, dataSheetsDirectory);
 
                 if (!result.success) {
-                    logger.error({ error: result.error }, `Failed to read file: ${fileMapping.filename}`);
+                    logger.info(`Failed to read file: ${fileMapping.filename}`);
                     continue;
                 }
 
@@ -129,24 +130,23 @@ class DataComparer {
                     filename: result.filename,
                     sheetName: result.sheetName,
                     recordCount: result.recordCount,
-                    fileData: result.data,
-                    recordHeader: result.recordHeader,
+                    fileData: result.data
                 });
             }
 
             logger.info(`Total records extracted from all files: ${allExtractedData.length}`);
             const result = await this.generateDuplicateReport({ data: allExtractedData, compositeKeys: compositeUniqueKeys, collectionName, processedFiles });
-            
+
             if (!result.success) {
-                logger.error({ err: result.error }, `Failed to generate duplicate report for collection ${collectionName}`);
-                return { success: false, error: result.error };
+                logger.info(`Failed to generate duplicate report for collection ${collectionName}`);
+                return { success: false };
             }
 
-            const comparisonResult = await this.generateComparisonReport(result.uniqueRecords, collectionName, compositeUniqueKeys);
+            const comparisonResult = await this.generateComparisonReport(result.uniqueRecords, collectionName, dataCompareKey);
 
-            if(!comparisonResult.success) {
-                logger.error({ err: comparisonResult.error }, `Failed to generate comparison report for collection ${collectionName}`);
-                return { success: false, error: comparisonResult.error };
+            if (!comparisonResult.success) {
+                logger.info(`Failed to generate comparison report for collection ${collectionName}`);
+                return { success: false };
             }
 
             return { success: true };
@@ -169,24 +169,24 @@ class DataComparer {
         try {
             const initResult = await dbAdapter.init();
             if (!initResult.success) {
-                logger.error({ error: initResult.error }, 'Failed to initialize database adapter');
-                return { success: false, error: 'Database initialization failed' };
+                logger.info('Failed to initialize database adapter');
+                return { success: false };
             }
 
             const adapter = dbAdapter.getAdapter();
             const dbResult = await adapter.fetchRecords(collectionName);
-            
+
             if (!dbResult.success) {
-                logger.error({ error: dbResult.error }, `Failed to fetch records from collection: ${collectionName}`);
-                return { success: false, error: dbResult.error };
+                logger.info(`Failed to fetch records from collection: ${collectionName}`);
+                return { success: false };
             }
 
             const dbRecords = dbResult.data;
             const comparisonResult = this.compareData(uniqueRecords, dbRecords, compositeKeys);
 
-            if(!comparisonResult.success) {
-                logger.error({ err: comparisonResult.error }, `Failed to compare data for collection: ${collectionName}`);
-                return { success: false, error: comparisonResult.error };
+            if (!comparisonResult.success) {
+                logger.info(`Failed to compare data for collection: ${collectionName}`);
+                return { success: false };
             }
 
             const reportFolder = path.join(process.cwd(), 'Reports');
@@ -198,14 +198,17 @@ class DataComparer {
                 excelRecordsCount: uniqueRecords.length,
                 databaseRecordsCount: dbRecords.length,
                 compositeKeys: compositeKeys,
-                comparison: comparisonResult
+                comparisonReport: comparisonResult.reportData
             };
             await fse.outputFile(outputFilePath, JSON.stringify(reportData, null, 2));
             logger.info(`Comparison report generated successfully: ${outputFilePath}`);
             return { success: true };
         } catch (err) {
+            await dbAdapter.close();
             logger.error({ err }, `Error generating comparison report for collection ${collectionName}: ${err.message}`);
             return { success: false, error: err.message };
+        } finally {
+            await dbAdapter.close();
         }
     }
 
@@ -220,169 +223,112 @@ class DataComparer {
         try {
             const excelMap = new Map();
             const dbMap = new Map();
-            
+            const reportData = {};
+
             excelData.forEach(record => {
-                const key = compositeKeys.length > 0 
-                    ? this.createCompositeKey(record, compositeKeys)
-                    : JSON.stringify(record);
-                excelMap.set(key, record);
+                const key = this.createCompositeKey(record, compositeKeys);
+                if (excelMap.has(key)) {
+                    excelMap.get(key).push(record);
+                } else {
+                    excelMap.set(key, [record]);
+                }
             });
-            
+
             dbData.forEach(record => {
-                const key = compositeKeys.length > 0 
-                    ? this.createCompositeKey(record, compositeKeys)
-                    : JSON.stringify(record);
-                dbMap.set(key, record);
+                const key = this.createCompositeKey(record, compositeKeys)
+                if (dbMap.has(key)) {
+                    dbMap.get(key).push(record);
+                } else {
+                    dbMap.set(key, [record]);
+                }
             });
-            
-            const recordsToAdd = [];
-            excelMap.forEach((record, key) => {
+
+            let isUniqueConstraintBroken = false; // flag to indicate if unique constraint is broken for database records
+            for (const [, records] of dbMap.entries()) {
+                if (records.length > 1) {
+                    isUniqueConstraintBroken = true;
+                    break;
+                }
+            }
+            if (isUniqueConstraintBroken) {
+                logger.info(`Unique constraint is broken for DB data with composite keys: ${compositeKeys.join(', ')}`);
+                return { success: false };
+            }
+
+            reportData.recordsToAddInDB = [];
+            excelMap.forEach((records, key) => {
                 if (!dbMap.has(key)) {
-                    recordsToAdd.push({
-                        record: record,
-                        compositeKey: key,
+                    reportData.recordsToAddInDB.push({
+                        records: records,
                         action: 'ADD'
                     });
                 }
             });
-
-            const recordsToDelete = [];
+            reportData.numberOfRecordsToAddInDB = reportData.recordsToAddInDB.reduce((count, item) => count + item.records.length, 0);
+            reportData.recordsToDeleteFromDB = [];
             dbMap.forEach((record, key) => {
                 if (!excelMap.has(key)) {
-                    recordsToDelete.push({
+                    reportData.recordsToDeleteFromDB.push({
                         record: record,
-                        compositeKey: key,
                         action: 'DELETE'
                     });
                 }
             });
+            reportData.numberOfRecordsToDeleteFromDB = reportData.recordsToDeleteFromDB.length;
 
-            const recordsToUpdate = [];
-            const exactMatches = [];
-            
-            excelMap.forEach((excelRecord, key) => {
+            reportData.changesRquiredInDB = [];
+            reportData.exactMatches = [];
+            excelMap.forEach((excelRecords, key) => {
                 if (dbMap.has(key)) {
-                    const dbRecord = dbMap.get(key);
-                    delete dbRecord._id
-                    const differences = this.findRecordDifferences(excelRecord, dbRecord);
-                    
-                    if (differences.length > 0) {
-                        recordsToUpdate.push({
-                            compositeKey: key,
-                            excelRecord: excelRecord,
-                            dbRecord: dbRecord,
-                            differences: differences,
-                            action: 'UPDATE'
+                    const dbRecords = dbMap.get(key);
+                    const isEqual = this.isEqual(excelRecords, dbRecords);
+                    if(!isEqual) {
+                        reportData.changesRquiredInDB.push({
+                            excelRecords: excelRecords,
+                            dbRecords: dbRecords
                         });
                     } else {
-                        exactMatches.push({
-                            compositeKey: key,
-                            excelRecord: excelRecord,
-                            dbRecord: dbRecord,
-                            action: 'NO_CHANGE'
+                        reportData.exactMatches.push({
+                            excelRecords: excelRecords,
+                            dbRecords: dbRecords
                         });
                     }
                 }
             });
-            
-            const summary = {
-                totalExcelRecords: excelData.length,
-                totalDatabaseRecords: dbData.length,
-                recordsToAdd: recordsToAdd.length,
-                recordsToDelete: recordsToDelete.length,
-                recordsToUpdate: recordsToUpdate.length,
-                exactMatches: exactMatches.length,
-                totalChangesRequired: recordsToAdd.length + recordsToDelete.length + recordsToUpdate.length
-            };
-            
+            reportData.noOfChangesRquiredInDB = reportData.changesRquiredInDB.length;
+            reportData.noOfExactMatches = reportData.exactMatches.length;
             return {
-                summary: summary,
-                changes: {
-                    add: recordsToAdd,
-                    delete: recordsToDelete,
-                    update: recordsToUpdate,
-                    exactMatches: exactMatches
-                },
-                matching: exactMatches,
-                matchingCount: exactMatches.length,
-                missingInDatabase: recordsToAdd,
-                missingInDatabaseCount: recordsToAdd.length,
-                missingInExcel: recordsToDelete,
-                missingInExcelCount: recordsToDelete.length,
-                totalExcelRecords: excelData.length,
-                totalDatabaseRecords: dbData.length,
+                reportData: reportData,
                 success: true
             };
-            
+
         } catch (err) {
             logger.error({ err }, `Error comparing data: ${err.message}`);
             return { success: false, error: err.message }
         }
     }
 
-    /**
-     * Find differences between two records
-     * @param {Object} excelRecord - Record from Excel
-     * @param {Object} dbRecord - Record from Database
-     * @returns {Array} - Array of field differences
-     */
-    findRecordDifferences(excelRecord, dbRecord) {
-        const differences = [];
-        
-        // Get all unique field names from both records
-        const allFields = new Set([
-            ...Object.keys(excelRecord),
-            ...Object.keys(dbRecord)
-        ]);
-        
-        allFields.forEach(field => {
-            const excelValue = excelRecord[field];
-            const dbValue = dbRecord[field];
-            
-            // Normalize values for comparison (handle null, undefined, empty strings)
-            const normalizedExcelValue = this.normalizeValue(excelValue);
-            const normalizedDbValue = this.normalizeValue(dbValue);
-            
-            if (normalizedExcelValue !== normalizedDbValue) {
-                differences.push({
-                    field: field,
-                    excelValue: excelValue,
-                    dbValue: dbValue,
-                    changeType: this.getChangeType(excelValue, dbValue)
-                });
+    isEqual(excelRecords, dbRecords) {
+        if (excelRecords.length !== dbRecords.length) {
+            return false;
+        }
+        // dbRecords will only have one record as per the current logic
+        const excelRecord = excelRecords[0];
+        const dbRecord = dbRecords[0];
+        delete dbRecord._id; // Remove _id for comparison
+        const keys = Object.keys(excelRecord);
+        if (keys.length !== Object.keys(dbRecord).length) {
+            return false;
+        }
+        for (const key of keys) {
+            const excelValue = typeof excelRecord[key] === 'string' ? excelRecord[key].toLowerCase() : excelRecord[key];
+            const dbValue = typeof dbRecord[key] === 'string' ? dbRecord[key].toLowerCase() : dbRecord[key];
+
+            if (excelValue !== dbValue) {
+                return false;
             }
-        });
-        
-        return differences;
-    }
-
-    /**
-     * Normalize values for comparison
-     * @param {*} value - Value to normalize
-     * @returns {string} - Normalized value
-     */
-    normalizeValue(value) {
-        if (value === null || value === undefined) return '';
-        if (typeof value === 'string') return value.trim().toLowerCase();
-        if (typeof value === 'number') return value.toString();
-        if (typeof value === 'boolean') return value.toString();
-        return JSON.stringify(value);
-    }
-
-    /**
-     * Determine the type of change for a field
-     * @param {*} excelValue - Value from Excel
-     * @param {*} dbValue - Value from Database
-     * @returns {string} - Change type
-     */
-    getChangeType(excelValue, dbValue) {
-        const hasExcelValue = excelValue !== null && excelValue !== undefined && excelValue !== '';
-        const hasDbValue = dbValue !== null && dbValue !== undefined && dbValue !== '';
-        
-        if (!hasExcelValue && !hasDbValue) return 'NO_CHANGE';
-        if (!hasDbValue && hasExcelValue) return 'FIELD_ADDED';
-        if (hasDbValue && !hasExcelValue) return 'FIELD_REMOVED';
-        return 'FIELD_MODIFIED';
+        }
+        return true;
     }
 }
 

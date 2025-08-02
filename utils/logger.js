@@ -1,25 +1,25 @@
-// utils/logger.js
-import fs from 'fs';
-import path from 'path';
-import dayjs from 'dayjs';
+import { Logger } from 'errorlogger';
 
-const ensureLogsDirectoryExists = () => {
-  const logsDir = path.join(process.cwd(), 'logs');
-  if (!fs.existsSync(logsDir)) {
-    fs.mkdirSync(logsDir);
+const loggerConfig = {
+  logging: {
+    stdout: true,
+    customLevels: { clienterror: 70 },
+    showErrorsInMainStream: ['info', 'warn', 'debug'],
+    max_logs: '14d',
+    logLevel: 'info',
+    logStreams: [
+      {
+        stream: 'main',
+        filename: './logs/DataComparer-%DATE%',
+        logLevel: 'info'
+      },
+      {
+        stream: 'error',
+        filename: './logs/DataComparer-%DATE%-error',
+        logLevel: 'error'
+      }
+    ],
   }
-};
+}
 
-const logToFile = (message) => {
-  const currentDate = dayjs().format('YYYY-MM-DD');
-  const logFilePath = path.join(process.cwd(), 'logs', `app_${currentDate}.log`);
-  fs.appendFileSync(logFilePath, `${dayjs().toISOString()} - ${message}\n`);
-};
-
-const logger = {
-  init: () => ensureLogsDirectoryExists(),
-  info: (message) => logToFile(`INFO: ${message}`),
-  error: (error, message) => logToFile(`ERROR: ${message} - ${error.message}`),
-};
-
-export default logger;
+export default new Logger(loggerConfig);

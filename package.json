@@ -1,5 +1,5 @@
 {
-  "name": "mongo-excel-comparison",
+  "name": "DataComparer",
   "version": "1.0.0",
   "description": "Utility to compare MongoDB data with Excel file and generate reports for missing, updated, and duplicate records.",
   "main": "index.js",
@@ -11,7 +11,8 @@
     "dayjs": "^1.11.13",
     "exceljs": "^4.3.0",
     "fs-extra": "^11.3.0",
-    "mongoose": "^6.0.12"
+    "mongoose": "^6.0.12",
+    "errorlogger": "https://github.com/gaurav-spraxa/errorLogger.git"
   },
   "devDependencies": {
     "nodemon": "^2.0.20"

@@ -9,7 +9,8 @@ export default {
   collectionConfig: [
     {
       collectionName: "hulu.scope",
-      compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamily"],
+      compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamily", "ScopePerBasin"],
+      dataCompareKey: ["ScopeModel"], // unique key for data base records
       mapping: [
         {
           filename: "20601-814 Master HU DB Rev. AM.xlsx",
@@ -35,7 +36,8 @@ export default {
             {
               columnName: "ScopePerBasin",
               headerName: "Number of Scopes per Basin",
-              defaultValue: 0
+              defaultValue: 0,
+              dataType: "number"
             }
           ]
         },
