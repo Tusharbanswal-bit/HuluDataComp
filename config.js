@@ -1,7 +1,7 @@
 export default {
   dbConfig: {
     sql: false,
-    uri: "mongodb://localhost:27017/cat",
+    uri: "mongodb://localhost:27017/",
     username: "your_db_username",
     password: "your_db_password"
   },
@@ -10,7 +10,8 @@ export default {
     {
       collectionName: "hulu.scope",
       compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamily", "ScopePerBasin"],
-      dataCompareKey: ["ScopeModel"], // unique key for data base records
+      exactMatchKeys: ["ScopeModel", "ManufacturerName", "ScopeType"], // key to check for exact matches
+      dataCompareKey: ["ScopeModel"],
       mapping: [
         {
           filename: "20601-814 Master HU DB Rev. AM.xlsx",
