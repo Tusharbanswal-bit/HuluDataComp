@@ -151,7 +151,7 @@ class DataComparer {
      * @returns {Promise<Object>} - Generated report
      */
     async generateReport(collectionConfig, dataSheetsDirectory) {
-        const { collectionName, mapping, compositeUniqueKeys, dataCompareKey, exactMatchKeys, excludeRecord } = collectionConfig;
+        const { collectionName, mapping, excelCompositeUniqueKeys, dataCompareKey, exactFieldMatchKeys, excludeRecord } = collectionConfig;
         let allExtractedData = [];
         const processedFiles = [];
 
@@ -175,14 +175,14 @@ class DataComparer {
             }
 
             logger.info(`Total records extracted from all files: ${allExtractedData.length}`);
-            const result = await this.generateDuplicateReport({ data: allExtractedData, compositeKeys: compositeUniqueKeys, collectionName, processedFiles });
+            const result = await this.generateDuplicateReport({ data: allExtractedData, compositeKeys: excelCompositeUniqueKeys, collectionName, processedFiles });
 
             if (!result.success) {
                 logger.info(`Failed to generate duplicate report for collection ${collectionName}`);
                 return { success: false };
             }
 
-            const comparisonResult = await this.generateComparisonReport({ uniqueRecords: result.uniqueRecords, collectionName, compositeKeys: dataCompareKey, exactMatchKeys });
+            const comparisonResult = await this.generateComparisonReport({ uniqueRecords: result.uniqueRecords, collectionName, compositeKeys: dataCompareKey, exactFieldMatchKeys });
 
             if (!comparisonResult.success) {
                 logger.info(`Failed to generate comparison report for collection ${collectionName}`);
@@ -204,7 +204,7 @@ class DataComparer {
      * @param {Array} compositeKeys - Array of field names for composite key comparison
      * @returns {Promise<Object>} - Comparison report result
      */
-    async generateComparisonReport({ uniqueRecords, collectionName, compositeKeys = [], exactMatchKeys = [] }) {
+    async generateComparisonReport({ uniqueRecords, collectionName, compositeKeys = [], exactFieldMatchKeys = [] }) {
         const dbAdapter = new DatabaseAdapter();
         try {
             const initResult = await dbAdapter.init();
@@ -222,7 +222,7 @@ class DataComparer {
             }
 
             const dbRecords = dbResult.data;
-            const comparisonResult = this.compareData({ uniqueRecords, dbRecords, compositeKeys, exactMatchKeys });
+            const comparisonResult = this.compareData({ uniqueRecords, dbRecords, compositeKeys, exactFieldMatchKeys });
 
             if (!comparisonResult.success) {
                 logger.info(`Failed to compare data for collection: ${collectionName}`);
@@ -305,10 +305,24 @@ class DataComparer {
                 });
             }
 
+            if (reportData.recordsDuplicateInDB && reportData.recordsDuplicateInDB.length) {
+                const dublicate = [];
+                reportData.recordsDuplicateInDB.forEach(item => {
+                    dublicate.push({
+                        ...item,
+                        Action: 'DUPLICATE IN DB'
+                    });
+                });
+                sheets.push({
+                    name: 'Records Duplicate In DB',
+                    data: dublicate
+                });
+            }
             // Summary sheet
             const summaryData = [
                 { Metric: 'Total Excel Records', Count: uniqueRecords.length },
                 { Metric: 'Total Database Records', Count: dbRecords.length },
+                { Metric: 'Duplicate Data in Database', Count: reportData.recordsDuplicateInDBCount },
                 { Metric: 'Records to Add', Count: reportData.numberOfRecordsToAddInDB },
                 { Metric: 'Records to Delete', Count: reportData.numberOfRecordsToDeleteFromDB },
                 { Metric: 'Records to Update', Count: reportData.noOfChangesRequiredInDB },
@@ -341,7 +355,7 @@ class DataComparer {
                     return acc;
                 }, {}),
                 compositeKeys: compositeKeys,
-                exactMatchKeys: exactMatchKeys
+                exactMatchKeys: exactFieldMatchKeys
             };
             await fse.outputFile(summaryJsonPath, JSON.stringify(summaryReport, null, 2));
             logger.info(`Summary JSON report generated: ${summaryJsonPath}`);
@@ -363,12 +377,12 @@ class DataComparer {
      * @param {Array} compositeKeys - Array of field names for composite key comparison
      * @returns {Object} - Comparison result with detailed differences
      */
-    compareData({ uniqueRecords, dbRecords, compositeKeys = [], exactMatchKeys = [] }) {
+    compareData({ uniqueRecords, dbRecords, compositeKeys = [], exactFieldMatchKeys = [] }) {
         try {
             const excelMap = new Map();
             const dbMap = new Map();
             const reportData = {};
-
+            const dbDuplicate = new Map();
             //excel records
             uniqueRecords.forEach(record => {
                 const key = this.createCompositeKey(record, compositeKeys);
@@ -382,24 +396,15 @@ class DataComparer {
             dbRecords.forEach(record => {
                 const key = this.createCompositeKey(record, compositeKeys)
                 if (dbMap.has(key)) {
-                    dbMap.get(key).push(record);
+
+                    if (!dbDuplicate.has(key)) {
+                        dbDuplicate.set(key, []);
+                    }
+                    dbDuplicate.get(key).push(record);
                 } else {
                     dbMap.set(key, [record]);
                 }
             });
-
-            let isUniqueConstraintBroken = false; // flag to indicate if unique constraint is broken for database records
-            for (const [, records] of dbMap.entries()) {
-                if (records.length > 1) {
-                    isUniqueConstraintBroken = true;
-                    break;
-                }
-            }
-            if (isUniqueConstraintBroken) {
-                logger.info(`Unique constraint is broken for DB data with composite keys: ${compositeKeys.join(', ')}`);
-                return { success: false };
-            }
-
             reportData.recordsToAddInDB = [];
             excelMap.forEach((records, key) => {
                 if (!dbMap.has(key)) {
@@ -428,7 +433,7 @@ class DataComparer {
                 if (dbMap.has(key)) {
                     reportData[exactMatchWithKeysField].push(key);
                     const dbRecords = dbMap.get(key);
-                    const isEqual = this.isEqual(excelRecords, dbRecords, exactMatchKeys);
+                    const isEqual = this.isEqual(excelRecords, dbRecords, exactFieldMatchKeys);
                     if (!isEqual) {
                         reportData.changesRequiredInDB.push({
                             excelRecords: excelRecords,
@@ -445,6 +450,8 @@ class DataComparer {
             reportData[`noOf${exactMatchWithKeysField}`] = reportData[exactMatchWithKeysField].length;
             reportData.noOfChangesRequiredInDB = reportData.changesRequiredInDB.length;
             reportData.noOfExactMatches = reportData.exactMatches.length;
+            reportData.recordsDuplicateInDB = Array.from(dbDuplicate.values()).flat();
+            reportData.recordsDuplicateInDBCount = reportData.recordsDuplicateInDB.length;
             return {
                 reportData: reportData,
                 success: true
@@ -456,14 +463,14 @@ class DataComparer {
         }
     }
 
-    isEqual(excelRecords, dbRecords, exactMatchKeys = []) {
+    isEqual(excelRecords, dbRecords, exactFieldMatchKeys = []) {
         if (excelRecords.length !== dbRecords.length) {
             return false;
         }
         // dbRecords will only have one record as per the current logic
         const excelRecord = excelRecords[0];
         const dbRecord = dbRecords[0];
-        for (const key of exactMatchKeys) {
+        for (const key of exactFieldMatchKeys) {
             const excelValue = typeof excelRecord[key] === 'string' ? excelRecord[key].toLowerCase() : excelRecord[key];
             const dbValue = typeof dbRecord[key] === 'string' ? dbRecord[key].toLowerCase() : dbRecord[key];
 

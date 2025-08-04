@@ -9,8 +9,8 @@ export default {
   collectionConfig: [
     {
       collectionName: "hulu.scope",
-      compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamily", "ScopePerBasin"],
-      exactMatchKeys: ["ScopeModel", "ManufacturerName", "ScopeType"], // key to check for exact matches
+      excelCompositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamily", "ScopePerBasin"],
+      exactFieldMatchKeys: ["ScopeModel", "ManufacturerName", "ScopeType"], // key to check for exact matches
       dataCompareKey: ["ScopeModel"],
       mapping: [
         {
@@ -100,7 +100,10 @@ export default {
     },
     {
       collectionName: "hulu.hookup",
-      compositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamilyId", "ScopePerBasin", "HookupName", "MachineFamilyID"], // Fields to create composite key for deduplication
+      excelCompositeUniqueKeys: ["HookupName", "ScopeFamily", "ScopePerBasin"], // Fields to create composite key for deduplication
+      dataCompareKey: ["HookupName", "ScopeFamily"], // unique key for data base records
+      exactFieldMatchKeys: ["HookupName", "ScopeFamily"], // key to check for exact matches
+      excludeRecord: [{ columnName: "HookupName", values: ["", null, undefined, 0, "0"] }],
       mapping: [
         {
           filename: "20601-814 Master HU DB Rev. AM.xlsx",
@@ -125,18 +128,17 @@ export default {
               headerName: "Scope Model"
             },
             {
-              columnName: "ScopeFamilyId",
-              headerName: "Strict Scope Family ID"
-            },
-            {
               columnName: "ScopePerBasin",
               headerName: "Number of Scopes per Basin",
               defaultValue: 0
             },
             {
+              columnName: "ScopeFamily",
+              headerName: "Strict Scope Family ID"
+            },
+            {
               columnName: "HookupName",
-              headerName: "Hookup, Handle version",
-              defaultValue: 0
+              headerName: "Hookup, Handle version"
             }
           ]
         }

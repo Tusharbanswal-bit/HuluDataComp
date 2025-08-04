@@ -1,36 +1,52 @@
 import mongoose from "mongoose";
 export default async function () {
-    return mongoose.models['hulu.scope'].aggregate([
+    return mongoose.models['hulu.hookup'].aggregate([
+        {
+            $match: {
+                MachineFamilyID: 2,
+                HookupName: { $not: { $in: [/CAS/i, /HAN/i] } }
+            }
+        },
         {
             $lookup: {
-                from: 'hulu.hookup',
-                localField: 'ScopeFamilyId',
-                foreignField: 'ScopeSfamId',
-                as: 'hookupData'
+                from: 'hulu.scope',
+                localField: 'ScopeSfamId',
+                foreignField: 'ScopeFamilyId',
+                as: 'scopeData'
             }
         },
         {
             $unwind: {
-                path: '$hookupData',
-                preserveNullAndEmptyArrays: true // This ensures that records without a match in hookupData still appear
+                path: '$scopeData',
+                preserveNullAndEmptyArrays: false
             }
         },
         {
-            $match: {
-                'hookupData.MachineFamilyID': 2, // This ensures that records without ScopeModelId in hookupData are included
-                'hookupData.HookupName': { $not: { $in: [/CAS/i, /HAN/i] } }
+            $group: {
+                _id: '$_id', // Hookup _id
+                HookupName: { $first: '$HookupName' },
+                MachineFamilyID: { $first: '$MachineFamilyID' },
+                ScopeModel: { $first: '$scopeData.ScopeModel' },
+                ScopeModelId: { $first: '$scopeData.ScopeModelId' },
+                ScopeType: { $first: '$scopeData.ScopeType' },
+                ManufacturerName: { $first: '$scopeData.ManufacturerName' },
+                ScopeFamily: { $first: '$scopeData.ScopeFamily' },
+                ScopeFamilyId:{ $first: '$scopeData.ScopeFamilyId' }
             }
         },
         {
             $project: {
-                MachineFamilyID: '$hookupData.MachineFamilyID',
-                ManufacturerName: 1,
-                ScopeType: 1,
+                _id: 0,
+                HookupName: 1,
+                MachineFamilyID: 1,
                 ScopeModel: 1,
+                ScopeModelId: 1,
+                ScopeType: 1,
+                ManufacturerName: 1,
                 ScopeFamily: 1,
-                ScopePerBasin: 1,
-                HookupName: '$hookupData.HookupName'
+                ScopeFamilyId: 1
             }
         }
-    ]);
+    ])
+
 }
