@@ -85,7 +85,7 @@ class DataComparer {
             const duplicatesFolder = path.join(process.cwd(), 'Reports', 'Duplicates', collectionName);
             await fse.ensureDir(duplicatesFolder);
             const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
-            
+
             for (const file of processedFiles) {
                 if (file.duplicateRecords && file.duplicateRecords.length > 0) {
                     const duplicateData = file.duplicateRecords.map(dup => ({
@@ -93,21 +93,21 @@ class DataComparer {
                         CompositeKey: dup.compositeKey,
                         DuplicateCount: dup.duplicateCount
                     }));
-                    
+
                     const fileName = `${file.filename.replace('.xlsx', '')}_Duplicates_${collectionName}_${timestamp}.xlsx`;
                     const filePath = path.join(duplicatesFolder, fileName);
-                    
+
                     await this.excelHelper.writeExcel(
-                        duplicateData, 
-                        filePath, 
+                        duplicateData,
+                        filePath,
                         'Duplicates',
                         this.getColumns(duplicateData[0])
                     );
-                    
+
                     logger.info(`File-wise duplicate Excel report generated: ${filePath}`);
                 }
             }
-            
+
             // Generate combined duplicates Excel report
             if (duplicateResult.duplicateRecords.length > 0) {
                 const combinedDuplicateData = duplicateResult.duplicateRecords.map(dup => ({
@@ -115,13 +115,13 @@ class DataComparer {
                     CompositeKey: dup.compositeKey,
                     DuplicateCount: dup.duplicateCount
                 }));
-                
+
                 const combinedFileName = `Combined_Duplicates_${collectionName.replace(/\./g, '_')}_${timestamp}.xlsx`;
                 const combinedFilePath = path.join(duplicatesFolder, combinedFileName);
-                
+
                 await this.excelHelper.writeExcel(
-                    combinedDuplicateData, 
-                    combinedFilePath, 
+                    combinedDuplicateData,
+                    combinedFilePath,
                     'Combined Duplicates',
                     this.getColumns(combinedDuplicateData[0])
                 );
@@ -151,13 +151,13 @@ class DataComparer {
      * @returns {Promise<Object>} - Generated report
      */
     async generateReport(collectionConfig, dataSheetsDirectory) {
-        const { collectionName, mapping, compositeUniqueKeys, dataCompareKey, exactMatchKeys } = collectionConfig;
+        const { collectionName, mapping, compositeUniqueKeys, dataCompareKey, exactMatchKeys, excludeRecord } = collectionConfig;
         let allExtractedData = [];
         const processedFiles = [];
 
         try {
             for (const fileMapping of mapping) {
-                const result = await this.excelHelper.readExcel(fileMapping, dataSheetsDirectory);
+                const result = await this.excelHelper.readExcel({ fileMapping, dataSheetsDirectory, excludeRecord });
 
                 if (!result.success) {
                     logger.info(`Failed to read file: ${fileMapping.filename}`);
@@ -233,11 +233,11 @@ class DataComparer {
             const comparisonFolder = path.join(process.cwd(), 'Reports', 'Comparison', collectionName);
             await fse.ensureDir(comparisonFolder);
             const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
-            
+
             // Generate Excel comparison report with multiple sheets
             const sheets = [];
             const reportData = comparisonResult.reportData;
-            
+
             // Records to Add sheet
             if (reportData.recordsToAddInDB && reportData.numberOfRecordsToAddInDB) {
                 const addData = [];
@@ -271,40 +271,40 @@ class DataComparer {
                     data: deleteData
                 });
             }
-            
+
             // Records to Update sheet
             if (reportData.changesRequiredInDB && reportData.changesRequiredInDB.length > 0) {
                 const updateData = reportData.changesRequiredInDB.map(item => {
                     const flatDiff = {
                         Action: 'UPDATE'
                     };
-                    
+
                     // Add Excel values with prefix
                     if (item.excelRecords) {
-                        for(const record of item.excelRecords) {
+                        for (const record of item.excelRecords) {
                             Object.keys(record).forEach(key => {
                                 flatDiff[`Excel_${key}`] = record[key];
                             });
                         }
                     }
-                    
+
                     // Add DB values with prefix
                     if (item.dbRecords) {
-                        for(const record of item.dbRecords) {
+                        for (const record of item.dbRecords) {
                             Object.keys(record).forEach(key => {
                                 flatDiff[`DB_${key}`] = record[key];
                             });
                         }
                     }
-                    
+
                     return flatDiff;
                 });
                 sheets.push({
-                    name: 'Records to Update', 
+                    name: 'Records to Update',
                     data: updateData
                 });
             }
-            
+
             // Summary sheet
             const summaryData = [
                 { Metric: 'Total Excel Records', Count: uniqueRecords.length },
@@ -323,14 +323,14 @@ class DataComparer {
                     { header: 'Count', key: 'Count', width: 15 }
                 ]
             });
-            
+
             // Generate multi-sheet Excel file
             const excelFileName = `Comparison_${collectionName.replace(/\./g, '_')}_${timestamp}.xlsx`;
             const excelFilePath = path.join(comparisonFolder, excelFileName);
-            
+
             await this.excelHelper.writeMultiSheetExcel(sheets, excelFilePath);
             logger.info(`Comparison Excel report generated: ${excelFilePath}`);
-            
+
             // Generate summary JSON report
             const summaryJsonPath = path.join(comparisonFolder, `Summary_${collectionName.replace(/\./g, '_')}_${timestamp}.json`);
             const summaryReport = {
@@ -345,7 +345,7 @@ class DataComparer {
             };
             await fse.outputFile(summaryJsonPath, JSON.stringify(summaryReport, null, 2));
             logger.info(`Summary JSON report generated: ${summaryJsonPath}`);
-            
+
             return { success: true };
         } catch (err) {
             await dbAdapter.close();
@@ -429,7 +429,7 @@ class DataComparer {
                     reportData[exactMatchWithKeysField].push(key);
                     const dbRecords = dbMap.get(key);
                     const isEqual = this.isEqual(excelRecords, dbRecords, exactMatchKeys);
-                    if(!isEqual) {
+                    if (!isEqual) {
                         reportData.changesRequiredInDB.push({
                             excelRecords: excelRecords,
                             dbRecords: dbRecords
@@ -474,7 +474,7 @@ class DataComparer {
         return true;
     }
 
-    
+
     /**
      * Generate columns for comparison Excel reports
      * @param {Object} sampleRow - Sample row to generate columns from

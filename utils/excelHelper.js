@@ -11,8 +11,8 @@ class ExcelHelper {
    * @param {string} dataSheetsDirectory - Directory containing Excel files
    * @returns {Promise<Object>} - Extracted data result
    */
-  async readExcel(fileMapping, dataSheetsDirectory) {
-    const { filename, sheetName, headerIndex = 1, columnConfig, excludeRecord, recordHeader } = fileMapping;
+  async readExcel({ fileMapping, dataSheetsDirectory, excludeRecord }) {
+    const { filename, sheetName, headerIndex = 1, columnConfig, recordHeader } = fileMapping;
     const filePath = path.join(process.cwd(), dataSheetsDirectory, filename);
     const extractedData = [];
 
@@ -162,7 +162,7 @@ class ExcelHelper {
   async writeExcel(data, filePath, sheetName = 'Sheet1', columns = null) {
     try {
       await fse.ensureDir(path.dirname(filePath));
-      
+
       const workbook = new ExcelJS.Workbook();
       const worksheet = workbook.addWorksheet(sheetName);
 
@@ -216,11 +216,11 @@ class ExcelHelper {
       // Save the file
       await workbook.xlsx.writeFile(filePath);
       logger.info(`Excel file written successfully: ${filePath}`);
-      
-      return { 
-        success: true, 
+
+      return {
+        success: true,
         filePath: filePath,
-        recordCount: data.length 
+        recordCount: data.length
       };
 
     } catch (err) {
@@ -238,7 +238,7 @@ class ExcelHelper {
   async writeMultiSheetExcel(sheets, filePath) {
     try {
       await fse.ensureDir(path.dirname(filePath));
-      
+
       const workbook = new ExcelJS.Workbook();
 
       for (const sheetConfig of sheets) {
@@ -297,9 +297,9 @@ class ExcelHelper {
       // Save the file
       await workbook.xlsx.writeFile(filePath);
       logger.info(`Multi-sheet Excel file written successfully: ${filePath}`);
-      
-      return { 
-        success: true, 
+
+      return {
+        success: true,
         filePath: filePath,
         sheetsCount: sheets.length
       };
