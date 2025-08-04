@@ -1,7 +1,7 @@
 export default {
   dbConfig: {
     sql: false,
-    uri: "mongodb://localhost:27017/cat",
+    uri: "mongodb://localhost:27017/cat5_3",
     username: "your_db_username",
     password: "your_db_password"
   },
@@ -10,7 +10,7 @@ export default {
     {
       collectionName: "hulu.scope",
       excelCompositeUniqueKeys: ["ManufacturerName", "ScopeModel", "ScopeType", "ScopeFamily", "ScopePerBasin"],
-      exactFieldMatchKeys: ["ScopeModel", "ManufacturerName", "ScopeType"], // key to check for exact matches
+      exactFieldMatch: ["ScopeModel", "ManufacturerName", "ScopeType"], // key to check for exact matches
       dataCompareKey: ["ScopeModel"],
       mapping: [
         {
@@ -102,7 +102,7 @@ export default {
       collectionName: "hulu.hookup",
       excelCompositeUniqueKeys: ["HookupName", "ScopeFamily", "ScopePerBasin"], // Fields to create composite key for deduplication
       dataCompareKey: ["HookupName", "ScopeFamily"], // unique key for data base records
-      exactFieldMatchKeys: ["HookupName", "ScopeFamily"], // key to check for exact matches
+      exactFieldMatch: ["HookupName", "ScopeFamily"], // key to check for exact matches
       excludeRecord: [{ columnName: "HookupName", values: ["", null, undefined, 0, "0"] }],
       mapping: [
         {

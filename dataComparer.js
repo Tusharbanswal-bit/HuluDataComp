@@ -85,6 +85,8 @@ class DataComparer {
         const uniqueDataKeySet = new Set();
         try {
             const duplicatesFolder = path.join(process.cwd(), 'Reports', 'Duplicates', collectionName);
+            const uniqueFolder= path.join(process.cwd(), 'Reports', 'comparison', collectionName);
+            await fse.ensureDir(uniqueFolder);
             await fse.ensureDir(duplicatesFolder);
             const timestamp = new Date().toISOString().replace(/[-:.]/g, '');
 
@@ -140,7 +142,7 @@ class DataComparer {
                 // Write unique records to a separate file
                 await this.excelHelper.writeExcel(
                     uniqueRecordsPerDataKey,
-                    path.join(duplicatesFolder, `Unique_${collectionName}_${timestamp}.xlsx`),
+                    path.join(uniqueFolder, `Unique_${collectionName}_${timestamp}.xlsx`),
                     'Unique Records',
                     this.getColumns(uniqueRecordsPerDataKey[0])
                 );
@@ -170,7 +172,7 @@ class DataComparer {
      * @returns {Promise<Object>} - Generated report
      */
     async generateReport(collectionConfig, dataSheetsDirectory) {
-        const { collectionName, mapping, excelCompositeUniqueKeys, dataCompareKey, exactFieldMatchKeys, excludeRecord } = collectionConfig;
+        const { collectionName, mapping, excelCompositeUniqueKeys, dataCompareKey, exactFieldMatch, excludeRecord } = collectionConfig;
         let allExtractedData = [];
         const processedFiles = [];
 
@@ -201,7 +203,7 @@ class DataComparer {
                 return { success: false };
             }
 
-            const comparisonResult = await this.generateComparisonReport({ uniqueRecords: result.uniqueRecords, collectionName, compositeKeys: dataCompareKey, exactFieldMatchKeys });
+            const comparisonResult = await this.generateComparisonReport({ uniqueRecords: result.uniqueRecords, collectionName, compositeKeys: dataCompareKey, exactFieldMatch });
 
             if (!comparisonResult.success) {
                 logger.info(`Failed to generate comparison report for collection ${collectionName}`);
@@ -223,7 +225,7 @@ class DataComparer {
      * @param {Array} compositeKeys - Array of field names for composite key comparison
      * @returns {Promise<Object>} - Comparison report result
      */
-    async generateComparisonReport({ uniqueRecords, collectionName, compositeKeys = [], exactFieldMatchKeys = [] }) {
+    async generateComparisonReport({ uniqueRecords, collectionName, compositeKeys = [], exactFieldMatch = [] }) {
         const dbAdapter = new DatabaseAdapter();
         try {
             const initResult = await dbAdapter.init();
@@ -241,7 +243,7 @@ class DataComparer {
             }
 
             const dbRecords = dbResult.data;
-            const comparisonResult = this.compareData({ uniqueRecords, dbRecords, compositeKeys, exactFieldMatchKeys });
+            const comparisonResult = this.compareData({ uniqueRecords, dbRecords, compositeKeys, exactFieldMatch });
 
             if (!comparisonResult.success) {
                 logger.info(`Failed to compare data for collection: ${collectionName}`);
@@ -374,7 +376,7 @@ class DataComparer {
                     return acc;
                 }, {}),
                 compositeKeys: compositeKeys,
-                exactMatchKeys: exactFieldMatchKeys
+                exactMatchKeys: exactFieldMatch
             };
             await fse.outputFile(summaryJsonPath, JSON.stringify(summaryReport, null, 2));
             logger.info(`Summary JSON report generated: ${summaryJsonPath}`);
@@ -396,7 +398,7 @@ class DataComparer {
      * @param {Array} compositeKeys - Array of field names for composite key comparison
      * @returns {Object} - Comparison result with detailed differences
      */
-    compareData({ uniqueRecords, dbRecords, compositeKeys = [], exactFieldMatchKeys = [] }) {
+    compareData({ uniqueRecords, dbRecords, compositeKeys = [], exactFieldMatch = [] }) {
         try {
             const excelMap = new Map();
             const dbMap = new Map();
@@ -452,7 +454,7 @@ class DataComparer {
                 if (dbMap.has(key)) {
                     reportData[exactMatchWithKeysField].push(key);
                     const dbRecords = dbMap.get(key);
-                    const isEqual = this.isEqual(excelRecords, dbRecords, exactFieldMatchKeys);
+                    const isEqual = this.isEqual(excelRecords, dbRecords, exactFieldMatch);
                     if (!isEqual) {
                         reportData.changesRequiredInDB.push({
                             excelRecords: excelRecords,
@@ -482,14 +484,14 @@ class DataComparer {
         }
     }
 
-    isEqual(excelRecords, dbRecords, exactFieldMatchKeys = []) {
+    isEqual(excelRecords, dbRecords, exactFieldMatch = []) {
         if (excelRecords.length !== dbRecords.length) {
             return false;
         }
         // dbRecords will only have one record as per the current logic
         const excelRecord = excelRecords[0];
         const dbRecord = dbRecords[0];
-        for (const key of exactFieldMatchKeys) {
+        for (const key of exactFieldMatch) {
             const excelValue = typeof excelRecord[key] === 'string' ? excelRecord[key].toLowerCase() : excelRecord[key];
             const dbValue = typeof dbRecord[key] === 'string' ? dbRecord[key].toLowerCase() : dbRecord[key];
 
