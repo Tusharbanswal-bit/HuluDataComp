@@ -1,7 +1,7 @@
 export default {
   dbConfig: {
     sql: false,
-    uri: "mongodb://localhost:27017/",
+    uri: "mongodb://localhost:27017/cat",
     username: "your_db_username",
     password: "your_db_password"
   },

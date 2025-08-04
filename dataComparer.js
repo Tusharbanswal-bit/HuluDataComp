@@ -65,7 +65,7 @@ class DataComparer {
      * @param {Array} processedFiles - Array of processed file information
      * @returns {Object} - Object containing unique data and success status
      */
-    async generateDuplicateReport({ data, compositeKeys, collectionName, processedFiles = [] }) {
+    async generateDuplicateReport({ data, compositeKeys, collectionName, processedFiles = [], dataCompareKey = [] }) {
         if (!compositeKeys || compositeKeys.length === 0) {
             logger.info('No composite keys defined, skipping deduplication');
             return { success: false };
@@ -81,6 +81,8 @@ class DataComparer {
         }
 
         const duplicateResult = this.getDuplicateStats(data, compositeKeys);
+        const uniqueRecordsPerDataKey = [];
+        const uniqueDataKeySet = new Set();
         try {
             const duplicatesFolder = path.join(process.cwd(), 'Reports', 'Duplicates', collectionName);
             await fse.ensureDir(duplicatesFolder);
@@ -125,19 +127,36 @@ class DataComparer {
                     'Combined Duplicates',
                     this.getColumns(combinedDuplicateData[0])
                 );
+
+                // finding unique records per data key
+                duplicateResult.uniqueRecords.forEach(record => {
+                    const compositeKey = this.createCompositeKey(record, dataCompareKey);
+                    if (!uniqueDataKeySet.has(compositeKey)) {
+                        uniqueDataKeySet.add(compositeKey);
+                        uniqueRecordsPerDataKey.push(record);
+                    }
+                });
+
+                // Write unique records to a separate file
+                await this.excelHelper.writeExcel(
+                    uniqueRecordsPerDataKey,
+                    path.join(duplicatesFolder, `Unique_${collectionName}_${timestamp}.xlsx`),
+                    'Unique Records',
+                    this.getColumns(uniqueRecordsPerDataKey[0])
+                );
                 const summary = {
                     collectionName: collectionName,
                     processedFiles: processedFiles.map(file => ({ fileName: file.filename, duplicateCount: file.duplicateCount })),
-                    uniqueCount: duplicateResult.uniqueCount,
+                    uniqueCount: uniqueRecordsPerDataKey.length,
                     duplicateCount: duplicateResult.duplicateCount,
-                    compositeKeys: compositeKeys,
+                    compositeKeys: compositeKeys
                 };
                 fse.outputFile(path.join(duplicatesFolder, `Summary_${collectionName}_${timestamp}.json`), JSON.stringify(summary, null, 2));
                 logger.info(`Combined duplicate Excel report generated: ${combinedFilePath}`);
             }
 
             logger.info(`Duplicate report generated successfully`);
-            return { success: true, uniqueRecords: duplicateResult.uniqueRecords };
+            return { success: true, uniqueRecords: uniqueRecordsPerDataKey };
         } catch (err) {
             logger.error({ err }, `Error generating duplicate report for collection ${collectionName}: ${err.message}`);
             return { success: false, error: err.message };
@@ -175,7 +194,7 @@ class DataComparer {
             }
 
             logger.info(`Total records extracted from all files: ${allExtractedData.length}`);
-            const result = await this.generateDuplicateReport({ data: allExtractedData, compositeKeys: excelCompositeUniqueKeys, collectionName, processedFiles });
+            const result = await this.generateDuplicateReport({ data: allExtractedData, compositeKeys: excelCompositeUniqueKeys, collectionName, processedFiles, dataCompareKey });
 
             if (!result.success) {
                 logger.info(`Failed to generate duplicate report for collection ${collectionName}`);
