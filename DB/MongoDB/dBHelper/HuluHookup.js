@@ -31,7 +31,8 @@ export default async function () {
                 ScopeType: { $first: '$scopeData.ScopeType' },
                 ManufacturerName: { $first: '$scopeData.ManufacturerName' },
                 ScopeFamily: { $first: '$scopeData.ScopeFamily' },
-                ScopeFamilyId:{ $first: '$scopeData.ScopeFamilyId' }
+                ScopeFamilyId:{ $first: '$scopeData.ScopeFamilyId' },
+                ScopePerBasin: { $first: '$scopeData.ScopePerBasin' },
             }
         },
         {
@@ -44,7 +45,8 @@ export default async function () {
                 ScopeType: 1,
                 ManufacturerName: 1,
                 ScopeFamily: 1,
-                ScopeFamilyId: 1
+                ScopeFamilyId: 1,
+                ScopePerBasin:1
             }
         }
     ])
